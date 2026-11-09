@@ -25,6 +25,9 @@ EXTEND_FUTURE_ACCEL = 10 * CV.MPH_TO_MS
 COAST_DECEL = 3 * CV.MPH_TO_MS
 MAX_FUTURE_DECEL = 6 * CV.MPH_TO_MS
 
+# Low-min-speed Jeep EPS latches a fault if LKAS is first requested above ~13.7 m/s
+LKAS_FIRST_RAISE_MAX_SPEED = 12.0  # m/s
+
 cachedParams = CachedParams()
 
 class CarController(CarControllerBase):
@@ -120,6 +123,11 @@ class CarController(CarControllerBase):
       if CS.out.vEgo > self.CP.minSteerSpeed or self.steerNoMinimum:
         lkas_control_bit = CC.latActive
       elif CS.out.vEgo < (self.CP.minSteerSpeed - self.steer_gap):
+        lkas_control_bit = False
+
+      # first request must be at low speed; checked before the enable delay so re-accelerating restarts it
+      if (self.CP.carFingerprint in JEEPS and self.low_steer and not self.lkas_control_bit_prev
+          and CS.out.vEgo > LKAS_FIRST_RAISE_MAX_SPEED):
         lkas_control_bit = False
 
       if self.low_steer and self.lkas_control_bit_prev:
